@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Display a globe on a webpage</title>
+    <title>Insurance rate change by zip code</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.11.0/mapbox-gl.css" rel="stylesheet">
@@ -61,10 +61,9 @@
 
 
     <script>
-        mapboxgl.accessToken = 'pk.eyJ1Ijoic2FyYWJyZW50IiwiYSI6ImNtMHpsb2Q4NTAwemoybHExbnB6eHVvZ2kifQ.nH0hUSv3IGzX6MkYB_cSmA';
+        mapboxgl.accessToken = 'pk.eyJ1IjoiY29tbXVuaXR5c2NhbGUiLCJhIjoiY21hZ3Y4azlmMDU5YTJqb2NqbzRsa3psbSJ9.eJlBVHcMSB88Czl3ti2i5g';
         const map = new mapboxgl.Map({
             container: 'map',
-            // Choose from Mapbox's core styles, or make your own style with Mapbox Studio
             style: 'mapbox://styles/mapbox/light-v11',
             zoom: 4,
             maxZoom: 18,
@@ -76,7 +75,6 @@
 
 
         map.on('load', () => {
-            // Set the default atmosphere style
             map.setFog({});
 
             map.addSource('mapillary', {
@@ -88,36 +86,54 @@
                 'maxzoom': 14
             })
 
-            map.addSource('projects', {
-                type: 'geojson',
-                data: 'projplaces.geojson'
-            });
+            map.addSource('zipcodes', {
+                type: 'vector',
+                url: 'mapbox://communityscale.zipcodes',
+                promoteId: 'GEOID20'
+            })
+
+            fetch('https://raw.githubusercontent.com/CommunityScale/zipsInsurance/main/zipsZillowInsurance250603.json')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(f => {
+                    const id = f.ZCTA5.toString();
+                    map.setFeatureState(
+                        {
+                        source: 'zipcodes',
+                        sourceLayer: 'zips',
+                        id: id
+                        },
+                        {
+                        insPremiums: f.premium
+                        }
+                    );
+                    });
+                });
 
 
 
 
-            map.addLayer({
-                id: 'projects-point',
-                type: 'circle',
-                source: 'projects',
-                paint: {
-
-                    'circle-color': [
-                        'match',
-                        ['get', 'Service'],
-                        'Housing', '#1b2f5a',
-                        'Zoning', '#82AC21',
-                        '#A34997' // default
-                    ],
-
-                    'circle-radius': 8,
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#ffffff',
-                }
-            });
-
-
+        map.addLayer({
+            id: 'zips-premiums',
+            type: 'fill',
+            source: 'zipcodes',
+            'source-layer': 'zips',
+            paint: {
+                'fill-color': 
+                [ "case", ["==", ["feature-state", "insPremiums"], null], 'transparent',
+                ['interpolate',
+                    ['linear'],
+                    ['feature-state', 'insPremiums'],
+                    1000, '#fee5d9',
+                    4000, '#fcae91',
+                    8000, '#fb6a4a',
+                    12000, '#de2d26',
+                    20000, '#a50f15',
+                    ]],
+                'fill-opacity': 0.7
+            }
         });
+    });
 
 
     </script>
